@@ -2,6 +2,50 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 
+/**
+ * @swagger
+ * /medico:
+ *   get:
+ *     summary: Retorna todos os médicos cadastrados.
+ *     description: Busca todos os registros da tabela MEDICO.
+ *     tags: [Médicos]
+ *     responses:
+ *       200:
+ *         description: Lista de médicos retornada com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Medico'
+ *             examples:
+ *               exemplo:
+ *                 value:
+ *                   msg:
+ *                     - id_medico: 1
+ *                       nome: "Dr. João"
+ *                       crm: "12345"
+ *                       especialidade: "Cardiologia"
+ *                       data_contratacao: "2020-01-10"
+ *                       id_departamento: 2
+ *       500:
+ *         description: Erro ao buscar médicos.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *             examples:
+ *               exemplo:
+ *                 value:
+ *                   msg: "Erro ao buscar médicos."
+ */
+
 router.get("/", async (req,res) => {
     try {
         const r = await db.query("SELECT * from MEDICO");
@@ -10,6 +54,58 @@ router.get("/", async (req,res) => {
         res.status(500).json({ msg: error.message });
     }
 });
+
+/**
+ * @swagger
+ * /medico/{id}:
+ *   get:
+ *     summary: Retorna um médico específico.
+ *     description: Busca um médico pelo ID informado.
+ *     tags: [Médicos]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: ID do médico.
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *     responses:
+ *       200:
+ *         description: Médico retornado com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Medico'
+ *             examples:
+ *               exemplo:
+ *                 value:
+ *                   msg:
+ *                     - id_medico: 1
+ *                       nome: "Dr. João"
+ *                       crm: "12345"
+ *                       especialidade: "Cardiologia"
+ *                       data_contratacao: "2020-01-10"
+ *                       id_departamento: 2
+ *       500:
+ *         description: Erro ao buscar médico.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *             examples:
+ *               exemplo:
+ *                 value:
+ *                   msg: "Erro ao buscar médico."
+ */
 
 router.get("/:id", async (req,res) => {
 
@@ -31,6 +127,62 @@ router.get("/:id", async (req,res) => {
         }
 });
 
+/**
+ * @swagger
+ * /medico:
+ *   post:
+ *     summary: Cadastra um novo médico.
+ *     description: Insere um novo registro na tabela MEDICO.
+ *     tags: [Médicos]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Medico'
+ *           examples:
+ *             exemplo:
+ *               value:
+ *                 nome: "Dra. Maria"
+ *                 crm: "67890"
+ *                 especialidade: "Pediatria"
+ *                 data_contratacao: "2023-05-12"
+ *                 id_departamento: 3
+ *     responses:
+ *       200:
+ *         description: Médico cadastrado com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   $ref: '#/components/schemas/Medico'
+ *             examples:
+ *               exemplo:
+ *                 value:
+ *                   msg:
+ *                     id_medico: 5
+ *                     nome: "Dra. Maria"
+ *                     crm: "67890"
+ *                     especialidade: "Pediatria"
+ *                     data_contratacao: "2023-05-12"
+ *                     id_departamento: 3
+ *       500:
+ *         description: Erro ao cadastrar médico.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *             examples:
+ *               exemplo:
+ *                 value:
+ *                   msg: "Erro ao cadastrar médico."
+ */
+
 router.post("/", async (req,res) => {
     let body = req.body;
 
@@ -49,6 +201,71 @@ router.post("/", async (req,res) => {
         res.status(500).json({ msg: error.message });
     }
 });
+
+/**
+ * @swagger
+ * /medico:
+ *   delete:
+ *     summary: Remove um médico do sistema.
+ *     description: Exclui o registro de um médico existente com base no ID informado.
+ *     tags: [Médicos]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               id_medico:
+ *                 type: integer
+ *                 example: 4
+ *     responses:
+ *       200:
+ *         description: Médico removido com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   $ref: '#/components/schemas/Medico'
+ *             examples:
+ *               exemplo:
+ *                 value:
+ *                   msg:
+ *                     id_medico: 4
+ *                     nome: "Dr. Carlos"
+ *                     crm: "22222"
+ *                     especialidade: "Ortopedia"
+ *                     data_contratacao: "2019-02-14"
+ *                     id_departamento: 3
+ *       404:
+ *         description: Médico não encontrado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *             examples:
+ *               exemplo:
+ *                 value:
+ *                   msg: "Médico não cadastrado no banco."
+ *       500:
+ *         description: Erro ao remover médico.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *             examples:
+ *               exemplo:
+ *                 value:
+ *                   msg: "Erro ao remover médico."
+ */
 
 router.delete("/", async (req,res) => {
     let body = req.body;
@@ -73,6 +290,76 @@ router.delete("/", async (req,res) => {
              res.status(404).json({ msg: error.message });
         }   
 }); 
+
+/**
+ * @swagger
+ * /medico:
+ *   put:
+ *     summary: Atualiza os dados de um médico existente.
+ *     description: Atualiza as informações de um médico já cadastrado no sistema.
+ *     tags: [Médicos]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Medico'
+ *           examples:
+ *             exemplo:
+ *               value:
+ *                 id_medico: 2
+ *                 nome: "Dr. Pedro"
+ *                 crm: "11111"
+ *                 especialidade: "Neurologia"
+ *                 data_contratacao: "2021-08-20"
+ *                 id_departamento: 1
+ *     responses:
+ *       200:
+ *         description: Médico atualizado com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   $ref: '#/components/schemas/Medico'
+ *             examples:
+ *               exemplo:
+ *                 value:
+ *                   msg:
+ *                     id_medico: 2
+ *                     nome: "Dr. Pedro"
+ *                     crm: "11111"
+ *                     especialidade: "Neurologia"
+ *                     data_contratacao: "2021-08-20"
+ *                     id_departamento: 1
+ *       404:
+ *         description: Médico não encontrado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *             examples:
+ *               exemplo:
+ *                 value:
+ *                   msg: "Médico não cadastrado no banco."
+ *       500:
+ *         description: Erro ao atualizar médico.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *             examples:
+ *               exemplo:
+ *                 value:
+ *                   msg: "Erro ao atualizar médico."
+ */
 
 router.put("/", async (req,res) => {
     let body = req.body;
