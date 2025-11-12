@@ -111,7 +111,7 @@ router.get("/:id", async (req,res) => {
         const qtd = Number(busca.rows[0].count);
 
         if (qtd == 0) {
-            res.status(200).json({msg: "Paciente não cadastrado no banco"});
+            res.status(404).json({ msg: "Paciente não cadastrado no banco" });
         } else {
             const paciente = await db.query("SELECT * from PACIENTE WHERE id_paciente = $1", [id]);
             res.status(200).json(paciente.rows);
@@ -277,7 +277,7 @@ router.delete("/", async (req,res) => {
             res.status(404).json({ msg: "Paciente não cadastrado no banco" });
         }
     } catch (error) {   
-         res.status(404).json({ msg: error.message });
+         res.status(500).json({ msg: error.message });
     }   
 }); 
 
@@ -374,7 +374,7 @@ router.put("/", async (req,res) => {
             res.status(404).json({ msg: "Paciente não cadastrado no banco" });
         }
     } catch (error) {   
-         res.status(404).json({ msg: error.message });
+         res.status(500).json({ msg: error.message });
     }   
 });
 

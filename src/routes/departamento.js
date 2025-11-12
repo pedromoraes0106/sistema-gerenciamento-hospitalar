@@ -99,7 +99,7 @@ router.get("/:id", async (req,res) => {
         const qtd = Number(busca.rows[0].count);
 
         if (qtd == 0) {
-            res.status(200).json({msg: "Departamento não cadastrado no banco"});
+            res.status(404).json({msg: "Departamento não cadastrado no banco"});
         } else {
             const departamento = await db.query("SELECT * from DEPARTAMENTO WHERE id_departamento = $1", [id]);
             res.status(200).json(departamento.rows);
@@ -256,7 +256,7 @@ router.delete("/", async (req,res) => {
             res.status(404).json({ msg: "Departamento não cadastrado no banco" });
         }
     } catch (error) {   
-            res.status(404).json({ msg: error.message });
+            res.status(500).json({ msg: error.message });
     }   
 }); 
 
@@ -348,7 +348,7 @@ router.put("/", async (req,res) => {
             res.status(404).json({ msg: "Departamento não cadastrado no banco" });
         }
     } catch (error) {   
-         res.status(404).json({ msg: error.message });
+         res.status(500).json({ msg: error.message });
     }    
 });
 
