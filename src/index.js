@@ -22,6 +22,10 @@ app.use(
   })
 );
 
+app.get("/", (req, res) => {
+  res.redirect("/api");
+});
+
 app.use("/medico", medico);
 app.use("/paciente", paciente);
 app.use("/departamento", departamento);
