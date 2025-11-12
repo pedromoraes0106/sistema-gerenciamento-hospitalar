@@ -110,10 +110,20 @@ router.get("/", async (req,res) => {
  *                   example: "Erro de consulta no banco."
  */
 
-router.get("/:id", async (req,res) => {
+router.get("/:id", async (req, res) => {
+    let id = Number(req.params.id);
+    if (Number.isNaN(id)) return res.status(400).json({ msg: "Informe um id_consulta válido" });
+
     try {
-        const r = await db.query("SELECT * from consulta WHERE id_consulta = $1", [id]);
-        res.status(200).json({msg: r.rows});
+        const busca = await db.query("SELECT count(*) from CONSULTA WHERE id_consulta = $1", [id]);
+        const qtd = Number(busca.rows[0].count);
+
+        if (qtd == 0) {
+            res.status(404).json({ msg: "Consulta não cadastrada no banco" });
+        } else {
+            const consulta = await db.query("SELECT * from consulta WHERE id_consulta = $1", [id]);
+            res.status(200).json(consulta.rows);
+        }
     } catch (error) {
         res.status(500).json({ msg: error.message });
     }
@@ -276,7 +286,7 @@ router.delete("/", async (req,res) => {
             res.status(404).json({ msg: "Consulta não cadastrada no banco" });
         }
     } catch (error) {   
-         res.status(404).json({ msg: error.message });
+         res.status(500).json({ msg: error.message });
     }   
 });
 
@@ -381,7 +391,7 @@ router.put("/", async (req,res) => {
             res.status(404).json({ msg: "Consulta não cadastrada no banco" });
         }
     } catch (error) {   
-         res.status(404).json({ msg: error.message });
+         res.status(500).json({ msg: error.message });
     }   
 });
 
