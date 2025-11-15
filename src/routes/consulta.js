@@ -187,7 +187,7 @@ router.get("/:id", async (req, res) => {
  * /consulta:
  *   post:
  *     summary: Cadastra uma nova consulta.
- *     description: Insere uma nova consulta na tabela. A data deve estar no formato YYYY-MM-DD e ser válida. O id_paciente e id_medico devem existir no banco. Não permite duplicidade de consulta para o mesmo paciente com o mesmo médico na mesma data.
+ *     description: Insere uma nova consulta na tabela. A data deve estar no formato YYYY-MM-DD e ser válida. O id_paciente e id_medico devem existir no banco. Não permite duplicidade de consulta para o mesmo paciente com o mesmo médico na mesma data. O campo `duracao_min` deve ser um número inteiro positivo.
  *     tags: [Consultas]
  *     requestBody:
  *       required: true
@@ -209,9 +209,11 @@ router.get("/:id", async (req, res) => {
  *                 example: 2
  *               data_consulta:
  *                 type: string
+ *                 format: date
  *                 example: "2025-11-10"
  *               duracao_min:
  *                 type: integer
+ *                 minimum: 1
  *                 example: 45
  *               diagnostico:
  *                 type: string
@@ -241,6 +243,7 @@ router.get("/:id", async (req, res) => {
  *                       example: 2
  *                     data_consulta:
  *                       type: string
+ *                       format: date
  *                       example: "2025-11-10"
  *                     duracao_min:
  *                       type: integer
@@ -252,7 +255,7 @@ router.get("/:id", async (req, res) => {
  *                       type: string
  *                       example: "Paciente deve fazer exames adicionais."
  *       400:
- *         description: Parâmetros inválidos, IDs de paciente/médico inexistentes ou consulta duplicada.
+ *         description: Parâmetros inválidos, IDs de paciente/médico inexistentes, consulta duplicada ou duração inválida.
  *         content:
  *           application/json:
  *             schema:
@@ -260,9 +263,24 @@ router.get("/:id", async (req, res) => {
  *               properties:
  *                 msg:
  *                   type: string
- *                   example: "Já existe uma consulta para esse paciente com esse médico na mesma data."
+ *             examples:
+ *               parametros_invalidos:
+ *                 value:
+ *                   msg: "Parâmetros obrigatórios ausentes ou inválidos."
+ *               paciente_inexistente:
+ *                 value:
+ *                   msg: "id_paciente informado não existe."
+ *               medico_inexistente:
+ *                 value:
+ *                   msg: "id_medico informado não existe."
+ *               duracao_invalida:
+ *                 value:
+ *                   msg: "duracao_min deve ser um número inteiro positivo."
+ *               consulta_duplicada:
+ *                 value:
+ *                   msg: "Já existe uma consulta para esse paciente com esse médico na mesma data."
  *       500:
- *         description: Erro ao cadastrar consulta.
+ *         description: Erro interno ao cadastrar consulta.
  *         content:
  *           application/json:
  *             schema:
@@ -270,7 +288,10 @@ router.get("/:id", async (req, res) => {
  *               properties:
  *                 msg:
  *                   type: string
- *                   example: "Erro ao inserir consulta no banco."
+ *             examples:
+ *               erro:
+ *                 value:
+ *                   msg: "Erro ao inserir consulta no banco."
  */
 
 router.post("/", async (req, res) => {
@@ -280,8 +301,13 @@ router.post("/", async (req, res) => {
         return res.status(400).json({ msg: "Parâmetros obrigatórios ausentes" });
     }
 
+
     if (isNaN(Number(id_paciente)) || isNaN(Number(id_medico))) {
         return res.status(400).json({ msg: "IDs devem ser números" });
+    }
+
+    if (isNaN(Number(duracao_min)) || Number(duracao_min) <= 0) {
+        return res.status(400).json({ msg: "duracao_min deve ser um número inteiro positivo." });
     }
 
     if (!isValidISODate(data_consulta)) {
