@@ -7,7 +7,7 @@ const db = require("../db");
  * /departamento:
  *   get:
  *     summary: Retorna todos os departamentos cadastrados.
- *     description: Busca todos os registros da tabela de departamentos.
+ *     description: Busca todos os registros da tabela de departamentos. Retorna uma mensagem caso não haja departamentos cadastrados.
  *     tags: [Departamentos]
  *     responses:
  *       200:
@@ -18,19 +18,22 @@ const db = require("../db");
  *               type: object
  *               properties:
  *                 msg:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id_departamento:
- *                         type: integer
- *                         example: 1
- *                       nome:
- *                         type: string
- *                         example: "Cardiologia"
- *                       localizacao:
- *                         type: string
- *                         example: "Bloco A"
+ *                   oneOf:
+ *                     - type: string
+ *                       example: "Nenhum departamento cadastrado."
+ *                     - type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id_departamento:
+ *                             type: integer
+ *                             example: 1
+ *                           nome:
+ *                             type: string
+ *                             example: "Cardiologia"
+ *                           localizacao:
+ *                             type: string
+ *                             example: "Bloco A"
  *       500:
  *         description: Erro interno ao buscar departamentos.
  *         content:
@@ -43,14 +46,21 @@ const db = require("../db");
  *                   example: "Erro de conexão com o banco de dados."
  */
 
-router.get("/", async (req,res) => {
+router.get("/", async (req, res) => {
     try {
-        const r = await db.query("SELECT * from departamento");
-        res.status(200).json({msg: r.rows});
+        const result = await db.query("SELECT * FROM departamento ORDER BY id_departamento");
+
+        if (result.rowCount === 0) {
+            return res.status(200).json({ msg: "Nenhum departamento cadastrado." });
+        }
+
+        return res.status(200).json({ msg: result.rows });
     } catch (error) {
-        res.status(500).json({ msg: error.message });
+        console.error("Erro ao buscar departamentos:", error);
+        return res.status(500).json({ msg: "Erro ao buscar departamentos no banco." });
     }
 });
+
 
 /**
  * @swagger
@@ -69,7 +79,26 @@ router.get("/", async (req,res) => {
  *           example: 1
  *     responses:
  *       200:
- *         description: Departamento encontrado ou mensagem informando que não foi cadastrado.
+ *         description: Departamento encontrado com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: object
+ *                   properties:
+ *                     id_departamento:
+ *                       type: integer
+ *                       example: 1
+ *                     nome:
+ *                       type: string
+ *                       example: "Cardiologia"
+ *                     localizacao:
+ *                       type: string
+ *                       example: "Bloco A"
+ *       404:
+ *         description: Departamento não cadastrado no banco.
  *         content:
  *           application/json:
  *             schema:
@@ -89,23 +118,26 @@ router.get("/", async (req,res) => {
  *                   type: string
  *                   example: "Erro ao executar a consulta."
  */
-router.get("/:id", async (req,res) => {
 
-    let id = Number(req.params.id);
-    if(Number.isNaN(id)) return res.status(400).json({msg: "Informe um id_departamento válido"});
-    
-    try {   
-        const busca = await db.query("SELECT count(*) from DEPARTAMENTO WHERE id_departamento = $1", [id]);
-        const qtd = Number(busca.rows[0].count);
+router.get("/:id", async (req, res) => {
+    const id = Number(req.params.id);
 
-        if (qtd == 0) {
-            res.status(404).json({msg: "Departamento não cadastrado no banco"});
-        } else {
-            const departamento = await db.query("SELECT * from DEPARTAMENTO WHERE id_departamento = $1", [id]);
-            res.status(200).json(departamento.rows);
-        }    
+    if (Number.isNaN(id) || id <= 0) {
+        return res.status(400).json({ msg: "Informe um id_departamento válido." });
+    }
+
+    try {
+        const result = await db.query("SELECT * FROM departamento WHERE id_departamento = $1", [id]);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ msg: "Departamento não cadastrado no banco." });
+        }
+
+        return res.status(200).json({ msg: result.rows[0] });
+
     } catch (error) {
-        res.status(500).json({ msg: error.message });
+        console.error("Erro ao buscar departamento:", error);
+        return res.status(500).json({ msg: "Erro ao consultar departamento no banco." });
     }
 });
 
@@ -114,7 +146,7 @@ router.get("/:id", async (req,res) => {
  * /departamento:
  *   post:
  *     summary: Cria um novo departamento.
- *     description: Insere um novo registro na tabela de departamentos.
+ *     description: Insere um novo registro na tabela de departamentos. O campo 'nome' é obrigatório; 'localizacao' é opcional.
  *     tags: [Departamentos]
  *     requestBody:
  *       required: true
@@ -122,6 +154,8 @@ router.get("/:id", async (req,res) => {
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - nome
  *             properties:
  *               nome:
  *                 type: string
@@ -130,7 +164,7 @@ router.get("/:id", async (req,res) => {
  *                 type: string
  *                 example: "Bloco B"
  *     responses:
- *       200:
+ *       201:
  *         description: Departamento criado com sucesso.
  *         content:
  *           application/json:
@@ -149,6 +183,16 @@ router.get("/:id", async (req,res) => {
  *                     localizacao:
  *                       type: string
  *                       example: "Bloco B"
+ *       400:
+ *         description: Parâmetros inválidos ou departamento já existente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *                   example: "O campo 'nome' é obrigatório." 
  *       500:
  *         description: Erro ao criar departamento.
  *         content:
@@ -161,39 +205,44 @@ router.get("/:id", async (req,res) => {
  *                   example: "Erro ao inserir no banco de dados."
  */
 
-router.post("/", async (req,res) => {
-    let body = req.body;
 
-    if(!body) return res.status(400).json({ msg: "Parâmetros incorretos" });
-    
-    let nome = body.nome;
-    let localizacao = body.localizacao;
+router.post("/", async (req, res) => {
+    const { nome, localizacao } = req.body;
+
+    if (!nome || nome.trim() === "") {
+        return res.status(400).json({ msg: "O campo 'nome' é obrigatório." });
+    }
 
     try {
-        const insert = await db.query("INSERT INTO DEPARTAMENTO(nome, localizacao) VALUES($1, $2) returning *", [nome, localizacao]);
-        res.status(200).json({ msg: insert.rows[0]});
+        const insert = await db.query("INSERT INTO departamento (nome, localizacao) VALUES ($1, $2) RETURNING *", [nome.trim(), localizacao ?? null]);
+
+        return res.status(201).json({ msg: insert.rows[0] });
     } catch (error) {
-        res.status(500).json({ msg: error.message });
+        if (error.code === "23505") { 
+            return res.status(400).json({ msg: "Já existe um departamento com este nome." });
+        }
+
+        console.error("Erro ao inserir departamento:", error);
+        return res.status(500).json({ msg: "Erro ao inserir departamento no banco." });
     }
 });
 
+
 /**
  * @swagger
- * /departamento:
+ * /departamento/{id}:
  *   delete:
  *     summary: Remove um departamento existente.
- *     description: Exclui um departamento com base no ID informado.
+ *     description: Exclui um departamento com base no ID informado na URL.
  *     tags: [Departamentos]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               id_departamento:
- *                 type: integer
- *                 example: 4
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: ID do departamento que será removido.
+ *         schema:
+ *           type: integer
+ *           example: 4
  *     responses:
  *       200:
  *         description: Departamento removido com sucesso.
@@ -224,6 +273,16 @@ router.post("/", async (req,res) => {
  *                 msg:
  *                   type: string
  *                   example: "Departamento não cadastrado no banco"
+ *       400:
+ *         description: ID inválido informado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *                   example: "Informe um id_departamento válido."
  *       500:
  *         description: Erro interno ao remover departamento.
  *         content:
@@ -236,47 +295,55 @@ router.post("/", async (req,res) => {
  *                   example: "Erro ao deletar no banco."
  */
 
-router.delete("/", async (req,res) => {
-    let body = req.body;
-        
-    if(!body) return res.status(400).json({ msg: "Parâmetros incorretos" });
+router.delete("/:id", async (req, res) => {
+    const id = Number(req.params.id);
 
-    let id = Number(body.id_departamento);
-    if(Number.isNaN(id)) return res.status(400).json({msg: "Informe um id_departamento válido"});
+    if (Number.isNaN(id) || id <= 0) {
+        return res.status(400).json({ msg: "Informe um id_departamento válido." });
+    }
 
     try {
-        const busca = await db.query("SELECT count(*) FROM DEPARTAMENTO WHERE id_departamento = $1", [id]);
-        let qtd = Number(busca.rows[0].count);
+        const busca = await db.query("SELECT * FROM departamento WHERE id_departamento = $1", [id]);
 
-        if ( qtd == 1 ) {
-            const del = await db.query("DELETE FROM DEPARTAMENTO WHERE id_departamento = $1 returning*", [id]);
-            res.status(200).json({msg: del.rows[0]});
+        if (busca.rowCount === 0) {
+            return res.status(404).json({ msg: "Departamento não cadastrado no banco." });
         }
-        else {
-            res.status(404).json({ msg: "Departamento não cadastrado no banco" });
-        }
-    } catch (error) {   
-            res.status(500).json({ msg: error.message });
-    }   
-}); 
+
+        const del = await db.query("DELETE FROM departamento WHERE id_departamento = $1 RETURNING *", [id]);
+
+        return res.status(200).json({ msg: del.rows[0] });
+    } catch (error) {
+        console.error("Erro ao deletar departamento:", error);
+        return res.status(500).json({ msg: "Erro ao excluir departamento no banco." });
+    }
+});
+
 
 /**
  * @swagger
- * /departamento:
+ * /departamento/{id}:
  *   put:
  *     summary: Atualiza um departamento existente.
- *     description: Atualiza os dados de um departamento já cadastrado.
+ *     description: Atualiza os dados de um departamento já cadastrado. O ID do departamento deve ser informado na URL. Não é permitido atualizar para um nome já existente em outro departamento.
  *     tags: [Departamentos]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: ID do departamento que será atualizado.
+ *         schema:
+ *           type: integer
+ *           example: 2
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - nome
+ *               - localizacao
  *             properties:
- *               id_departamento:
- *                 type: integer
- *                 example: 2
  *               nome:
  *                 type: string
  *                 example: "Ortopedia"
@@ -303,6 +370,16 @@ router.delete("/", async (req,res) => {
  *                     localizacao:
  *                       type: string
  *                       example: "Bloco C"
+ *       400:
+ *         description: Nome do departamento já existe ou parâmetros inválidos.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *                   example: "Já existe um departamento cadastrado com o nome 'Ortopedia'."
  *       404:
  *         description: Departamento não cadastrado no banco.
  *         content:
@@ -314,7 +391,7 @@ router.delete("/", async (req,res) => {
  *                   type: string
  *                   example: "Departamento não cadastrado no banco"
  *       500:
- *         description: Erro ao atualizar departamento.
+ *         description: Erro interno ao atualizar departamento.
  *         content:
  *           application/json:
  *             schema:
@@ -322,35 +399,42 @@ router.delete("/", async (req,res) => {
  *               properties:
  *                 msg:
  *                   type: string
- *                   example: "Erro interno ao atualizar."
+ *                   example: "Erro ao atualizar departamento no banco."
  */
 
-router.put("/", async (req,res) => {
-    let body = req.body;
-    
-    if(!body) return res.status(400).json({ msg: "Parâmetros incorretos" });
+router.put("/:id", async (req, res) => {
+    const id = Number(req.params.id);
+    const { nome, localizacao } = req.body;
 
-    let id = Number(body.id_departamento);
-    if(Number.isNaN(id)) return res.status(400).json({msg: "Informe um id_departamento válido"});
+    if (Number.isNaN(id) || id <= 0) {
+        return res.status(400).json({ msg: "Informe um id_departamento válido." });
+    }
 
-    let nome = body.nome;
-    let localizacao = body.localizacao;
+    if (!nome || !localizacao) {
+        return res.status(400).json({ msg: "Campos obrigatórios ausentes. Envie nome e localizacao." });
+    }
 
     try {
-        const busca = await db.query("SELECT count(*) FROM DEPARTAMENTO WHERE id_departamento = $1", [id]);
-        let qtd = Number(busca.rows[0].count);
+        const busca = await db.query("SELECT * FROM departamento WHERE id_departamento = $1", [id]);
+        if (busca.rowCount === 0) {
+            return res.status(404).json({ msg: "Departamento não cadastrado no banco." });
+        }
 
-        if ( qtd == 1) {
-            const update = await db.query("UPDATE DEPARTAMENTO SET nome = $1, localizacao = $2 WHERE id_departamento = $3 returning *", [nome, localizacao, id]);
-            res.status(200).json({msg: update.rows[0]});
+        const verificaNome = await db.query("SELECT * FROM departamento WHERE nome = $1 AND id_departamento <> $2", [nome, id]);
+
+        if (verificaNome.rowCount > 0) {
+            return res.status(400).json({ msg: `Já existe um departamento cadastrado com o nome ${nome}.` });
         }
-        else {
-            res.status(404).json({ msg: "Departamento não cadastrado no banco" });
-        }
-    } catch (error) {   
-         res.status(500).json({ msg: error.message });
-    }    
+
+        const update = await db.query("UPDATE departamento SET nome = $1, localizacao = $2 WHERE id_departamento = $3 RETURNING *", [nome, localizacao, id]);
+
+        return res.status(200).json({ msg: update.rows[0] });
+    } catch (error) {
+        console.error("Erro ao atualizar departamento:", error);
+        return res.status(500).json({ msg: "Erro ao atualizar departamento no banco." });
+    }
 });
+
 
 module.exports = router;
     
